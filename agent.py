@@ -6,10 +6,13 @@ from livekit.plugins import (
     noise_cancellation,
 )
 from livekit.plugins import google
+import logging
 from prompts import AGENT_INSTRUCTION, SESSION_INSTRUCTION
 from tools import get_weather, search_web, send_email
-load_dotenv()
+load_dotenv(override=True)
 
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("livekit").setLevel(logging.DEBUG)
 
 class Assistant(Agent):
     def __init__(self) -> None:
@@ -46,11 +49,18 @@ async def entrypoint(ctx: agents.JobContext):
         ),
     )
 
+    print("Connecting to room...")
     await ctx.connect()
+    
+    print("Agent connected. Generating initial greeting...")
 
     await session.generate_reply(
         instructions=SESSION_INSTRUCTION,
     )
+    
+    print("Greeting generated. Waiting for user input...")
+    # Keep the task alive and wait for session to end so it continues listening
+    ctx.add_shutdown_callback(lambda *args: print("Shutting down..."))
 
 
 if __name__ == "__main__":

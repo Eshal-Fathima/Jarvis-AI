@@ -3,8 +3,11 @@ livekit-plugins-openai
 livekit-plugins-silero
 livekit-plugins-google
 livekit-plugins-noise-cancellation
+livekit-api
 mem0ai
 duckduckgo-search
 langchain_community
 requests
 python-dotenv
+fastapi
+uvicorn

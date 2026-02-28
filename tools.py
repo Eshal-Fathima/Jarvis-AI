@@ -14,13 +14,31 @@ async def get_weather(
     city: str) -> str:
     """
     Get the current weather for a given city.
+    
+    Args:
+        city: The name of the city to get the weather for. Example: 'Seattle', 'New York'
     """
     try:
-        response = requests.get(
-            f"https://wttr.in/{city}?format=3")
+        # First, get the coordinates for the city
+        geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
+        geo_response = requests.get(geo_url, timeout=10)
+        if geo_response.status_code != 200 or not geo_response.json().get("results"):
+            return f"Could not find coordinates for {city}."
+            
+        location = geo_response.json()["results"][0]
+        lat, lon = location["latitude"], location["longitude"]
+        
+        # Then, get the weather
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+        response = requests.get(weather_url, timeout=10)
+        
         if response.status_code == 200:
-            logging.info(f"Weather for {city}: {response.text.strip()}")
-            return response.text.strip()   
+            data = response.json().get("current_weather", {})
+            temp = data.get("temperature", "unknown")
+            windspeed = data.get("windspeed", "unknown")
+            result = f"The current weather in {city} is {temp}°C with {windspeed} km/h wind."
+            logging.info(result)
+            return result
         else:
             logging.error(f"Failed to get weather for {city}: {response.status_code}")
             return f"Could not retrieve weather for {city}."
@@ -34,6 +52,9 @@ async def search_web(
     query: str) -> str:
     """
     Search the web using DuckDuckGo.
+    
+    Args:
+        query: The search query to look up on the web. Example: 'President of the USA'
     """
     try:
         results = DuckDuckGoSearchRun().run(tool_input=query)
@@ -48,8 +69,7 @@ async def send_email(
     context: RunContext,  # type: ignore
     to_email: str,
     subject: str,
-    message: str,
-    cc_email: Optional[str] = None
+    message: str
 ) -> str:
     """
     Send an email through Gmail.
@@ -58,7 +78,6 @@ async def send_email(
         to_email: Recipient email address
         subject: Email subject line
         message: Email body content
-        cc_email: Optional CC email address
     """
     try:
         # Gmail SMTP configuration
@@ -79,11 +98,7 @@ async def send_email(
         msg['To'] = to_email
         msg['Subject'] = subject
         
-        # Add CC if provided
         recipients = [to_email]
-        if cc_email:
-            msg['Cc'] = cc_email
-            recipients.append(cc_email)
         
         # Attach message body
         msg.attach(MIMEText(message, 'plain'))
